@@ -18,27 +18,31 @@ async function performActionWithDelay(
   await page.waitForTimeout(randomDelay(500, 1500));
 }
 
-// Function to check if there are activities
 async function checkForActivities(page: puppeteer.Page) {
-  const noActivitiesSelector = 'img[alt="No Activities"]';
-  const checkboxSelector = '#select-all-activities';
-
   try {
-    // Wait for either the "No Activities" image or the checkbox to appear
-    await Promise.race([
-      page.waitForSelector(noActivitiesSelector, { timeout: 5000 }),
-      page.waitForSelector(checkboxSelector, { timeout: 5000 })
-    ]);
-
-    // Check which element is present
-    const noActivitiesPresent = await page.$(noActivitiesSelector);
+    // Wait for the page to load completely after login
+    await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 });
     
-    if (noActivitiesPresent) {
+    // Check for either the "No Activities" image, the checkbox, or the button
+    const result = await page.evaluate(() => {
+      const noActivitiesImg = document.querySelector('img[alt="No Activities"]');
+      const checkbox = document.getElementById('select-all-activities');
+      const button = document.querySelector('button.btn.btn--ghost');
+      
+      if (noActivitiesImg) return 'no_activities';
+      if (checkbox && button) return 'has_activities';
+      return 'unknown';
+    });
+
+    if (result === 'no_activities') {
       console.log("No activities found.");
       return false;
-    } else {
+    } else if (result === 'has_activities') {
       console.log("Activities found.");
       return true;
+    } else {
+      console.log("Unable to determine if there are activities.");
+      return false;
     }
   } catch (error) {
     console.error("Error while checking for activities:", error);
@@ -76,7 +80,7 @@ async function handleActivitiesPage(page: puppeteer.Page) {
 
 (async () => {
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: true,
     args: ["--window-size=2200,1000"],
   });
   const page = (await browser.pages())[0];
