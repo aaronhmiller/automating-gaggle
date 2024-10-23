@@ -6,7 +6,3 @@ Assumes the presence of a `.env` file containing your `USR` (username) and `PWD`
 ## Usage
 
 `deno run -A run-gaggle.ts`
-
-## To Do
-
-get elements to auto schedule and select and run
