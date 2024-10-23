@@ -21,7 +21,7 @@ async function performActionWithDelay(
 async function checkForActivities(page: Page) {
   try {
     // Wait for the page to load completely after login
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     // Check for either the "No Activities" image, the checkbox, or the button
     const result = await page.evaluate(() => {
@@ -79,35 +79,38 @@ async function handleActivitiesPage(page: Page) {
 
 (async () => {
   const browser = await firefox.launch({
-    headless: false 
+    headless: true,
   });
   const context = await browser.newContext({
-    viewport: { width: 2200, height: 1000 }
+    viewport: { width: 2200, height: 1000 },
   });
   const page = await context.newPage();
 
   try {
     await page.goto("https://accounts.gaggleamp.com/sign_in", {
-      waitUntil: 'networkidle',
-      timeout: 60000 // Increase timeout to 60 seconds
+      waitUntil: "networkidle",
+      timeout: 60000, // Increase timeout to 60 seconds
     });
 
     // Wait for email input field to be visible and type
-    await page.waitForSelector("#user_email", { state: 'visible', timeout: 1000 });
+    await page.waitForSelector("#user_email", {
+      state: "visible",
+      timeout: 1000,
+    });
     const usr = env.USR;
     await page.fill("#user_email", usr);
 
     await performActionWithDelay(page, async () => {
       await page.waitForSelector("#continue-button", {
-        state: 'visible',
-        timeout: 1000
+        state: "visible",
+        timeout: 1000,
       });
       await page.click("#continue-button");
     });
 
     await page.waitForSelector("#user_password", {
-      state: 'visible',
-      timeout: 1000
+      state: "visible",
+      timeout: 1000,
     });
     const pwd = env.PWD;
     await performActionWithDelay(page, async () => {
