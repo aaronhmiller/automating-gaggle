@@ -21,23 +21,25 @@ async function performActionWithDelay(
 async function checkForActivities(page: puppeteer.Page) {
   try {
     // Wait for the page to load completely after login
-    await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 });
-    
+    await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 30000 });
+
     // Check for either the "No Activities" image, the checkbox, or the button
     const result = await page.evaluate(() => {
-      const noActivitiesImg = document.querySelector('img[alt="No Activities"]');
-      const checkbox = document.getElementById('select-all-activities');
-      const button = document.querySelector('button.btn.btn--ghost');
-      
-      if (noActivitiesImg) return 'no_activities';
-      if (checkbox && button) return 'has_activities';
-      return 'unknown';
+      const noActivitiesImg = document.querySelector(
+        'img[alt="No Activities"]',
+      );
+      const checkbox = document.getElementById("select-all-activities");
+      const button = document.querySelector("button.btn.btn--ghost");
+
+      if (noActivitiesImg) return "no_activities";
+      if (checkbox && button) return "has_activities";
+      return "unknown";
     });
 
-    if (result === 'no_activities') {
+    if (result === "no_activities") {
       console.log("No activities found.");
       return false;
-    } else if (result === 'has_activities') {
+    } else if (result === "has_activities") {
       console.log("Activities found.");
       return true;
     } else {
@@ -56,21 +58,24 @@ async function handleActivitiesPage(page: puppeteer.Page) {
 
   if (hasActivities) {
     // Wait for the checkbox to be available
-    await page.waitForSelector('#select-all-activities');
+    await page.waitForSelector("#select-all-activities");
 
     // Check if the checkbox is already checked
-    const isChecked = await page.$eval('#select-all-activities', (checkbox: HTMLInputElement) => checkbox.checked);
+    const isChecked = await page.$eval(
+      "#select-all-activities",
+      (checkbox: HTMLInputElement) => checkbox.checked,
+    );
 
     // If it's not checked, click it to check it
     if (!isChecked) {
-      await page.click('#select-all-activities');
+      await page.click("#select-all-activities");
     }
 
     // Wait for the button to be available
-    await page.waitForSelector('button.btn.btn--ghost');
+    await page.waitForSelector("button.btn.btn--ghost");
 
     // Click the button
-    await page.click('button.btn.btn--ghost');
+    await page.click("button.btn.btn--ghost");
 
     console.log("Checkbox selected and button clicked.");
   } else {
@@ -122,7 +127,6 @@ async function handleActivitiesPage(page: puppeteer.Page) {
 
     // Optional: Take a screenshot of the final page state
     await page.screenshot({ path: "final-state-screenshot.png" });
-
   } catch (error) {
     console.error("An error occurred:", error);
     // Optional: Take a screenshot when an error occurs
