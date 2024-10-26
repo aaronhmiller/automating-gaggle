@@ -118,7 +118,7 @@ async function handleActivitiesPage(page: Page) {
       await page.click('input[type="submit"]');
     });
 
-    console.log("Login successful!");
+    console.log(`Login successful! [${new Date().toISOString()}]`);
 
     // Handle the activities page
     await handleActivitiesPage(page);
