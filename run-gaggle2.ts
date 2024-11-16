@@ -18,43 +18,146 @@ async function performActionWithDelay(
   await page.waitForTimeout(randomDelay(500, 1500));
 }
 
-async function checkForActivities(page: Page) {
+async function checkForActivities(page: Page, debug: boolean = false) {
   try {
     // Wait for the page to load completely after login
     await page.waitForLoadState("networkidle");
 
-    // Check for either the "No Activities" image, the checkbox, or the button
-    const result = await page.evaluate(() => {
+    if (debug) {
+      console.log("🔍 Network idle achieved, beginning element search...");
+      
+      // Take a screenshot for debugging
+      await page.screenshot({ path: 'debug-screenshot.png' });
+      console.log("📸 Debug screenshot saved as 'debug-screenshot.png'");
+      
+      // Log all images and their alt texts
+      const imgCount = await page.evaluate(() => {
+        const images = document.querySelectorAll('img');
+        console.log(`Found ${images.length} images on page:`);
+        images.forEach((img, i) => {
+          console.log(`Image ${i + 1}:`, {
+            alt: img.alt,
+            src: img.src,
+            visible: img.offsetParent !== null,
+            dimensions: `${img.width}x${img.height}`
+          });
+        });
+        return images.length;
+      });
+      console.log(`📊 Total images found: ${imgCount}`);
+    }
+
+    // Check for elements with detailed logging
+    const result = await page.evaluate((debugMode) => {
+      const debugInfo: any = {
+        noActivitiesImg: null,
+        checkbox: null,
+        button: null
+      };
+
+      // Check for "No Activities" image
       const noActivitiesImg = document.querySelector(
-        'img[alt="No Activities"]',
+        'img[alt="No Activities"]'
       );
+      debugInfo.noActivitiesImg = noActivitiesImg ? {
+        alt: (noActivitiesImg as HTMLImageElement).alt,
+        src: (noActivitiesImg as HTMLImageElement).src,
+        visible: noActivitiesImg.offsetParent !== null,
+        dimensions: `${(noActivitiesImg as HTMLImageElement).width}x${(noActivitiesImg as HTMLImageElement).height}`
+      } : null;
+
+      // Check for checkbox
       const checkbox = document.getElementById("select-all-activities");
+      debugInfo.checkbox = checkbox ? {
+        visible: checkbox.offsetParent !== null,
+        disabled: checkbox.hasAttribute('disabled'),
+        type: checkbox.getAttribute('type')
+      } : null;
+
+      // Check for button
       const button = document.querySelector("button.btn.btn--ghost");
+      debugInfo.button = button ? {
+        text: button.textContent?.trim(),
+        visible: button.offsetParent !== null,
+        disabled: button.hasAttribute('disabled'),
+        classes: button.className
+      } : null;
 
-      if (noActivitiesImg) return "no_activities";
-      if (checkbox && button) return "has_activities";
-      return "unknown";
-    });
+      // Determine result
+      let result = "unknown";
+      if (noActivitiesImg) result = "no_activities";
+      if (checkbox && button) result = "has_activities";
 
-    if (result === "no_activities") {
-      console.log("No activities found.");
+      return {
+        result,
+        debugInfo: debugMode ? debugInfo : null
+      };
+    }, debug);
+
+    if (debug) {
+      console.log("\n🔍 Debug Information:");
+      console.log(JSON.stringify(result.debugInfo, null, 2));
+      
+      // Log DOM structure around key areas
+      await page.evaluate(() => {
+        const logElementContext = (element: Element | null, description: string) => {
+          if (!element) {
+            console.log(`${description} not found`);
+            return;
+          }
+          
+          console.log(`\n${description} context:`);
+          console.log('Parent:', element.parentElement?.outerHTML);
+          console.log('Element:', element.outerHTML);
+          console.log('Next sibling:', element.nextElementSibling?.outerHTML);
+        };
+
+        logElementContext(
+          document.querySelector('img[alt="No Activities"]'),
+          '"No Activities" image'
+        );
+        logElementContext(
+          document.getElementById('select-all-activities'),
+          'Checkbox'
+        );
+        logElementContext(
+          document.querySelector('button.btn.btn--ghost'),
+          'Ghost button'
+        );
+      });
+    }
+
+    if (result.result === "no_activities") {
+      console.log(debug ? "🚫 No activities found (with debug info above)." : "No activities found.");
       return false;
-    } else if (result === "has_activities") {
-      console.log("Activities found.");
+    } else if (result.result === "has_activities") {
+      console.log(debug ? "✅ Activities found (with debug info above)." : "Activities found.");
       return true;
     } else {
-      console.log("Unable to determine if there are activities.");
+      console.log(debug ? "❓ Unable to determine if there are activities (see debug info above)." : "Unable to determine if there are activities.");
       return false;
     }
   } catch (error) {
     console.error("Error while checking for activities:", error);
+    if (debug) {
+      console.error("\n🔍 Additional debug information at time of error:");
+      console.error("URL:", await page.url());
+      console.error("Current HTML:", await page.content());
+    }
     return false;
   }
 }
 
+// Usage examples:
+// Normal usage:
+// await checkForActivities(page);
+
+// With debugging:
+// await checkForActivities(page, true);
+
 // Main function to handle the activities page
 async function handleActivitiesPage(page: Page) {
-  const hasActivities = await checkForActivities(page);
+  const hasActivities = await checkForActivities(page, true);
 
   if (hasActivities) {
     // Wait for the checkbox to be available
