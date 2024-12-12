@@ -82,7 +82,7 @@ async function handleActivitiesPage(page: Page) {
 
 (async () => {
   const browser = await firefox.launch({
-    headless: false,
+    headless: true,
   });
   const context = await browser.newContext({
     viewport: { width: 2200, height: 1000 },
