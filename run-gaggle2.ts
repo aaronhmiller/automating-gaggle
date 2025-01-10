@@ -3,12 +3,29 @@ import { load } from "https://deno.land/std/dotenv/mod.ts";
 
 const env = await load();
 
-// Function to generate a random delay between min and max milliseconds
+// Add timestamp logging function
+function logWithTimestamp(message: string, error?: Error) {
+  const timestamp = new Date().toLocaleString('en-US', { 
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  if (error) {
+    console.error(`[${timestamp} PT] ERROR: ${message}`, error);
+  } else {
+    console.log(`[${timestamp} PT] ${message}`);
+  }
+}
+
 function randomDelay(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-// Function to perform an action with a random delay before and after
 async function performActionWithDelay(
   page: Page,
   action: () => Promise<void>,
@@ -20,10 +37,11 @@ async function performActionWithDelay(
 
 async function checkForActivities(page: Page, debug: boolean = false) {
   try {
+    logWithTimestamp("Waiting for network idle state...");
     await page.waitForLoadState("networkidle");
 
     if (debug) {
-      console.log("🔍 Network idle achieved, beginning element search...");
+      logWithTimestamp("Network idle achieved, beginning element search...");
     }
 
     // Look for the "All Caught Up!" message
@@ -37,16 +55,14 @@ async function checkForActivities(page: Page, debug: boolean = false) {
     });
 
     if (debug) {
-      console.log("\n🔍 No activities status:", noActivitiesExists);
+      logWithTimestamp(`No activities status: ${JSON.stringify(noActivitiesExists)}`);
     }
 
-    // If we find the "All Caught Up!" message, return false (no activities to process)
     if (noActivitiesExists.exists) {
-      console.log("Found 'All Caught Up!' message - no activities to process");
+      logWithTimestamp("Found 'All Caught Up!' message - no activities to process");
       return false;
     }
 
-    // Check for bulk schedule button
     const buttonExists = await page.evaluate(() => {
       const button = document.querySelector('button[data-action="click->ga3--widgets--bulk-schedule#bulkSchedule"]');
       return {
@@ -57,59 +73,70 @@ async function checkForActivities(page: Page, debug: boolean = false) {
     });
 
     if (debug) {
-      console.log("\n🔍 Button status:", buttonExists);
+      logWithTimestamp(`Button status: ${JSON.stringify(buttonExists)}`);
     }
 
     return buttonExists.exists;
   } catch (error) {
-    console.error("Error while checking for activities:", error);
+    logWithTimestamp("Error while checking for activities", error as Error);
     if (debug) {
-      console.log("\n🔍 Additional debug information at time of error:");
-      console.log("URL:", await page.url());
+      logWithTimestamp(`Current URL: ${await page.url()}`);
     }
     return false;
   }
 }
 
-// Main function to handle the activities page
 async function handleActivitiesPage(page: Page): Promise<boolean> {
+  logWithTimestamp("Starting activities page handling");
   const hasActivities = await checkForActivities(page, true);
 
   if (!hasActivities) {
-    console.log("No activities found - exiting cleanly");
-    return true;  // Return true to indicate successful completion
+    logWithTimestamp("No activities found - exiting cleanly");
+    return true;
   }
 
   try {
-    // Wait for the button to be available
+    logWithTimestamp("Waiting for bulk schedule button...");
     await page.waitForSelector('button[data-action="click->ga3--widgets--bulk-schedule#bulkSchedule"]');
     
-    // Click the button
+    logWithTimestamp("Clicking bulk schedule button...");
     await page.click('button[data-action="click->ga3--widgets--bulk-schedule#bulkSchedule"]');
-    console.log("Bulk schedule button clicked successfully.");
-    return true;  // Return true to indicate successful completion
+    logWithTimestamp("Bulk schedule button clicked successfully");
+    return true;
   } catch (error) {
-    console.error("Error clicking bulk schedule button:", error);
-    return false;  // Return false to indicate an error occurred
+    logWithTimestamp("Error clicking bulk schedule button", error as Error);
+    return false;
   }
 }
 
 async function main() {
-  const browser = await firefox.launch({
-    headless: true,
-  });
-  const context = await browser.newContext({
-    viewport: { width: 2200, height: 1000 },
-  });
-  const page = await context.newPage();
-
+  logWithTimestamp("Starting browser launch");
+  let browser;
+  let context;
+  
   try {
+    browser = await firefox.launch({
+      headless: true,
+      timeout: 30000, // Reduce timeout to 30 seconds
+    });
+    logWithTimestamp("Browser launched successfully");
+
+    context = await browser.newContext({
+      viewport: { width: 2200, height: 1000 },
+    });
+    logWithTimestamp("Browser context created");
+
+    const page = await context.newPage();
+    logWithTimestamp("New page created");
+
+    logWithTimestamp("Navigating to sign-in page...");
     await page.goto("https://accounts.gaggleamp.com/sign_in", {
       waitUntil: "networkidle",
-      timeout: 60000, // 60 second timeout
+      timeout: 60000,
     });
 
     // Login process
+    logWithTimestamp("Starting login process");
     await page.waitForSelector("#user_email", {
       state: "visible",
       timeout: 5000,
@@ -135,33 +162,31 @@ async function main() {
       await page.click('input[type="submit"]');
     });
 
-    console.log(`Login successful! [${new Date().toISOString()}]`);
+    logWithTimestamp("Login successful!");
 
-    // Handle the activities page
     const result = await handleActivitiesPage(page);
     
-    // Close browser and exit with appropriate status
     await context.close();
     await browser.close();
     
     if (result) {
-      console.log("Script completed successfully");
-      Deno.exit(0);  // Exit with success status
+      logWithTimestamp("Script completed successfully");
+      Deno.exit(0);
     } else {
-      console.error("Script completed with errors");
-      Deno.exit(1);  // Exit with error status
+      logWithTimestamp("Script completed with errors");
+      Deno.exit(1);
     }
 
   } catch (error) {
-    console.error("An error occurred:", error);
-    await context.close();
-    await browser.close();
-    Deno.exit(1);  // Exit with error status
+    logWithTimestamp("An error occurred in main execution", error as Error);
+    if (context) await context.close();
+    if (browser) await browser.close();
+    Deno.exit(1);
   }
 }
 
 // Run the main function
 main().catch((error) => {
-  console.error("Unhandled error:", error);
+  logWithTimestamp("Unhandled error in main function", error as Error);
   Deno.exit(1);
 });
