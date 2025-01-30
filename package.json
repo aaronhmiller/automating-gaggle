@@ -1,0 +1,26 @@
+{
+  "dependencies": {
+    "@playwright/test": "^1.50.0",
+    "dotenv": "^16.4.7",
+    "playwright": "^1.50.0"
+  },
+  "name": "automating-gaggle",
+  "version": "1.0.0",
+  "description": "Assumes the presence of a `.env` file containing your `USR` (username) and `PWD` (password) for your GaggleAMP account.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aaronhmiller/automating-gaggle.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/aaronhmiller/automating-gaggle/issues"
+  },
+  "homepage": "https://github.com/aaronhmiller/automating-gaggle#readme"
+}
