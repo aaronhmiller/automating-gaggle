@@ -2,3 +2,5 @@
 logged-in-screenshot.png
 error-screenshot.png
 final-state-screenshot.png
+node_modules/*
+package-lock.json
